@@ -36,39 +36,9 @@ const modifyData = (data) => {
 
 const Table = ({ data }) => {
     const [visibleRows, setVisibleRows] = useState([]);
-    const [recentlyUpdated, setRecentlyUpdated] = useState(new Set());
     const tableRef = useRef(null);
     const rowHeight = 42; // Approximate height of each row in pixels
     const bufferSize = 10; // Number of rows to render above and below the visible area
-    
-    // Store the previous data to detect changes
-    const prevDataRef = useRef();
-    
-    // Check for updated rows when data changes
-    useEffect(() => {
-        if (prevDataRef.current) {
-            const updatedIndices = new Set();
-            data.forEach((row, index) => {
-                if (index < prevDataRef.current.length) {
-                    const prevRow = prevDataRef.current[index];
-                    if (row.stockPrice !== prevRow.stockPrice || row.marketCap !== prevRow.marketCap) {
-                        updatedIndices.add(index);
-                    }
-                }
-            });
-            
-            if (updatedIndices.size > 0) {
-                setRecentlyUpdated(updatedIndices);
-                
-                // Clear the indicator after 5 seconds
-                setTimeout(() => {
-                    setRecentlyUpdated(new Set());
-                }, 5000);
-            }
-        }
-        
-        prevDataRef.current = [...data];
-    }, [data]);
     
     useEffect(() => {
         const calculateVisibleRows = () => {
@@ -132,22 +102,19 @@ const Table = ({ data }) => {
                         <tr style={{ height: `${visibleRows[0] * rowHeight}px` }} />
                     )}
                     
-                    {visibleRows.map(index => {
-                        const isUpdated = recentlyUpdated.has(index);
-                        return (
-                            <tr 
-                                key={index} 
-                                className={`row ${isUpdated ? 'updated-row' : ''}`} 
-                                data-row-index={index}
-                            >
-                                <td className="cell">{data[index].companyName}</td>
-                                <td className="cell">{data[index].ticker}</td>
-                                <td className="cell">{data[index].cobDate}</td>
-                                <td className={`cell ${isUpdated ? 'updated-cell' : ''}`}>{data[index].stockPrice}</td>
-                                <td className={`cell ${isUpdated ? 'updated-cell' : ''}`}>{data[index].marketCap}</td>
-                            </tr>
-                        );
-                    })}
+                    {visibleRows.map(index => (
+                        <tr 
+                            key={index} 
+                            className="row" 
+                            data-row-index={index}
+                        >
+                            <td className="cell">{data[index].companyName}</td>
+                            <td className="cell">{data[index].ticker}</td>
+                            <td className="cell">{data[index].cobDate}</td>
+                            <td className="cell">{data[index].stockPrice}</td>
+                            <td className="cell">{data[index].marketCap}</td>
+                        </tr>
+                    ))}
                     
                     {/* Spacer to maintain scroll position for virtualized rows below */}
                     {visibleRows.length > 0 && visibleRows[visibleRows.length - 1] < data.length - 1 && (
@@ -164,37 +131,12 @@ const App = () => {
     const [data1, setData1] = useState(() => generateData(1000));
     const [data2, setData2] = useState([]);
     const [affectedRows, setAffectedRows] = useState([]);
-
-    // Function to randomly update some data values
-    const updateRandomData = useCallback(() => {
-        setData1(prevData => {
-            const newData = [...prevData];
-            // Update 5 random rows
-            for (let i = 0; i < 5; i++) {
-                const randomIndex = Math.floor(Math.random() * newData.length);
-                newData[randomIndex] = {
-                    ...newData[randomIndex],
-                    stockPrice: (Math.random() * 1000).toFixed(2),
-                    marketCap: (Math.random() * 1000000000).toFixed(0),
-                };
-            }
-            return newData;
-        });
-    }, []);
     
     useEffect(() => {
         const { modifiedData, affectedRows: affected } = modifyData([...data1]);
         setData2(modifiedData);
         setAffectedRows(affected);
     }, [data1]);
-
-    // Set up periodic data updates
-    useEffect(() => {
-        // Update some random data every 30 seconds
-        const intervalId = setInterval(updateRandomData, 30000);
-        
-        return () => clearInterval(intervalId);
-    }, [updateRandomData]);
 
     const chartData = {
         labels: data1.slice(0, 10).map(d => d.ticker),
